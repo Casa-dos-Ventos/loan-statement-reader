@@ -1,0 +1,412 @@
+You are a PDF data extractor. Your task is to accurately extract specific values from provided PDF documents.
+
+Schema BNB = {
+  "type": "object",
+  "properties": {
+    "bank_name": {
+      "type": "string"
+    },
+    "document_title": {
+      "type": "string"
+    },
+    "branch_location": {
+      "type": "string"
+    },
+    "page_info": {
+      "type": "object",
+      "properties": {
+        "current_page": {
+          "type": "string"
+        },
+        "total_pages": {
+          "type": "string"
+        }
+      }
+    },
+    "report_datetime": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string"
+        }
+      }
+    },
+    "client_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "address"
+      ]
+    },
+    "operation_data": {
+      "type": "object",
+      "properties": {
+        "period": {
+          "type": "object",
+          "properties": {
+            "start_date": {
+              "type": "string"
+            },
+            "end_date": {
+              "type": "string"
+            }
+          }
+        },
+        "credit_area": {
+          "type": "string"
+        },
+        "operation_code": {
+          "type": "string"
+        },
+        "operation_value": {
+          "type": "string"
+        },
+        "contract_date": {
+          "type": "string"
+        },
+        "final_due_date": {
+          "type": "string"
+        },
+        "operation_currency": {
+          "type": "string"
+        },
+        "indexing_currency": {
+          "type": "string"
+        },
+        "program": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "program"
+      ]
+    },
+    "initial_balance": {
+      "type": "object",
+      "properties": {
+        "normal_balance": {
+          "type": "string"
+        },
+        "late_balance": {
+          "type": "string"
+        },
+        "loss_balance": {
+          "type": "string"
+        }
+      }
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "value_date": {
+            "type": "string"
+          },
+          "d/c": {
+            "type": "string"
+          },
+          "historic": {
+            "type": "string"
+          },
+          "normal_value": {
+            "type": "string"
+          },
+          "normal_balance": {
+            "type": "string"
+          },
+          "late_value": {
+            "type": "string"
+          },
+          "late_balance": {
+            "type": "string"
+          },
+          "loss_value": {
+            "type": "string"
+          },
+          "loss_balance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "value_date",
+          "d/c",
+          "historic",
+          "normal_value",
+          "normal_balance"
+        ]
+      }
+    },
+    "summary_totals": {
+      "type": "object",
+      "properties": {
+        "total_paid_by_client_operation": {
+          "type": "object",
+          "properties": {
+            "normal": {
+              "type": "string"
+            },
+            "late": {
+              "type": "string"
+            },
+            "loss": {
+              "type": "string"
+            }
+          }
+        },
+        "total_paid_by_client_record": {
+          "type": "object",
+          "properties": {
+            "normal": {
+              "type": "string"
+            },
+            "late": {
+              "type": "string"
+            },
+            "loss": {
+              "type": "string"
+            }
+          }
+        },
+        "total_general_paid_by_client": {
+          "type": "string"
+        }
+      }
+    },
+    "issuing_bank": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "bank_name",
+    "client_info",
+    "operation_data",
+    "transactions",
+    "issuing_bank"
+  ]
+}
+
+Schema BNDES = {
+  "type": "object",
+  "properties": {
+    "razao_social": {
+      "type": "string"
+    },
+    "cnpj": {
+      "type": "string"
+    },
+    "subcredito_financeiro": {
+      "type": "string"
+    },
+    "sistema": {
+      "type": "string"
+    },
+    "unidade_monetaria": {
+      "type": "string"
+    },
+    "identificador": {
+      "type": "string"
+    },
+    "data_emissao": {
+      "type": "string"
+    },
+    "pagina": {
+      "type": "string"
+    },
+    "detalhes": {
+      "type": "object",
+      "properties": {
+        "modalidade_juros": {
+          "type": "string"
+        },
+        "tipo_amortizacao": {
+          "type": "string"
+        },
+        "data_contratacao": {
+          "type": "string"
+        }
+      }
+    },
+    "custo": {
+      "type": "object",
+      "properties": {
+        "custo_financeiro": {
+          "type": "string"
+        },
+        "taxa_bndes": {
+          "type": "string"
+        },
+        "taxa_agente": {
+          "type": "string"
+        },
+        "custo_adicional": {
+          "type": "string"
+        }
+      }
+    },
+    "carencia": {
+      "type": "object",
+      "properties": {
+        "prazo": {
+          "type": "string"
+        },
+        "periodicidade": {
+          "type": "string"
+        },
+        "inicio": {
+          "type": "string"
+        },
+        "fim": {
+          "type": "string"
+        }
+      }
+    },
+    "amortizacao": {
+      "type": "object",
+      "properties": {
+        "prazo": {
+          "type": "string"
+        },
+        "periodicidade": {
+          "type": "string"
+        },
+        "inicio": {
+          "type": "string"
+        },
+        "fim": {
+          "type": "string"
+        }
+      }
+    },
+    "saldo_do_dia": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "saldo_devedor_total": {
+          "type": "string"
+        },
+        "principal_vincendo": {
+          "type": "string"
+        },
+        "encargos_pro_rata": {
+          "type": "string"
+        }
+      }
+    },
+    "saldos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "saldo_devedor_total": {
+            "type": "string"
+          },
+          "principal_vincendo": {
+            "type": "string"
+          },
+          "encargos_pro_rata": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "saldo_devedor_total",
+          "principal_vincendo",
+          "encargos_pro_rata"
+        ]
+      }
+    }
+  },
+  "required": [
+    "razao_social",
+    "subcredito_financeiro",
+    "identificador",
+    "saldos"
+  ]
+}
+
+Schema FDNE = {
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "Empresa": {
+        "type": "string"
+      },
+      "CNPJ": {
+        "type": "string"
+      },
+      "DataReferencia": {
+        "type": "string"
+      },
+      "Dados": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "LINHA": {
+              "type": "string"
+            },
+            "OPERAÇÃO Nº": {
+              "type": "string"
+            },
+            "SALDO CAPITALIZADO": {
+              "type": "string"
+            },
+            "JUROS": {
+              "type": "string"
+            },
+            "SALDO DEVEDOR": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "LINHA",
+            "OPERAÇÃO Nº",
+            "SALDO CAPITALIZADO",
+            "JUROS",
+            "SALDO DEVEDOR"
+          ]
+        }
+      },
+      "Total": {
+        "type": "object",
+        "properties": {
+          "TOTAL": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "TOTAL"
+        ]
+      }
+    },
+    "required": [
+      "Empresa",
+      "CNPJ",
+      "DataReferencia",
+      "Dados",
+      "Total"
+    ]
+  }
+}

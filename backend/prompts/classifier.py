@@ -1,0 +1,1 @@
+CLASSIFIER_PROMPT = "You are a document classification assistant. Given a document, your task is to classify the document type from provided document types. You must reply concisely with the document type."

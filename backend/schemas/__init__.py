@@ -9,3 +9,9 @@ SCHEMAS = {
     "FDNE": FDNE_SCHEMA,
     "classifier": CLASSIFIER_SCHEMA,
 }
+
+LIST_KEYS = {
+    "BNDES": ["saldos", "saldos.items"],
+    "BNB": ["transacoes"],
+    "FDNE": ["tabelas", "tabelas.Dados"],
+}

@@ -4,11 +4,11 @@ import base64
 import json
 
 
-def generate_response(prompt, output_schema, document):
+def generate_response(model,prompt, output_schema, document):
     client = genai.Client(
         vertexai=True,
         project="sap-tools-cdv",
-        location="global",
+        location="us-central1",
     )
 
     text1 = types.Part.from_text(text=prompt)
@@ -17,7 +17,7 @@ def generate_response(prompt, output_schema, document):
         mime_type="application/pdf",
     )
 
-    model = "gemini-2.0-flash-001"
+    model = model
     contents = [types.Content(role="user", parts=[text1, document1])]
     generate_content_config = types.GenerateContentConfig(
         temperature=0,

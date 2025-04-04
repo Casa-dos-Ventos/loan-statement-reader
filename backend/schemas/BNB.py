@@ -78,8 +78,30 @@ BNB_SCHEMA = {
         "saldo_final": {
             "type": "object",
             "properties": {
-                "principal": {"type": "string"},
-                "jus_bas_var": {"type": "string"},
+                "principal": {
+                    "type": "object",
+                    "properties": {
+                        "valor_normal": {"type": "string"},
+                        "saldo_normal": {"type": "string"},
+                        "valor_atraso": {"type": "string"},
+                        "saldo_atraso": {"type": "string"},
+                        "valor_prejuizo": {"type": "string"},
+                        "saldo_prejuizo": {"type": "string"},
+                    },
+                    "required": ["saldo_normal"],
+                },
+                "jus_bas_var": {
+                    "type": "object",
+                    "properties": {
+                        "valor_normal": {"type": "string"},
+                        "saldo_normal": {"type": "string"},
+                        "valor_atraso": {"type": "string"},
+                        "saldo_atraso": {"type": "string"},
+                        "valor_prejuizo": {"type": "string"},
+                        "saldo_prejuizo": {"type": "string"},
+                    },
+                    "required": ["saldo_normal"],
+                },
             },
         },
         "totais": {

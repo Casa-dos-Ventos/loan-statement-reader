@@ -3,11 +3,9 @@ import streamlit as st
 import io
 from backend.prompts import PROMPTS
 from backend.schemas import SCHEMAS, LIST_KEYS
-from backend.lib.funcs import recursive_expand_rows
+from backend.lib.funcs import recursive_expand_rows, split_pdf_in_memory
 from backend.connectors.gemini_connector import generate_response
 import pandas as pd
-
-array_key = {"BNDES": "saldos", "BNB": "saldos", "FDNE": "saldos"}
 
 
 def classify_document(document):
@@ -29,30 +27,53 @@ def extract_text(document, doc_source):
     return prediction
 
 
-@st.cache_data(show_spinner=False)
+# @st.cache_data(show_spinner=False)
 def classify_uploaded_files(files):
     """
-    Classify each uploaded file in the session state into three categories and extract text based on the classification.
+    Classify each uploaded file, split if necessary (for 'BNB'),
+    and extract text from the resulting document(s).
+    Returns results grouped by original file name.
     """
 
     my_bar = st.progress(0, text="Processando arquivos...")
     num_files = len(files)
-    processed_results = {}
-    for i, file in enumerate(files):
-        with st.spinner(f"Processando arquivo {i + 1} de {num_files}: {file.name}"):
+    processed_results = defaultdict(list)
+    for id_file, file in enumerate(files):
+        with st.spinner(
+            f"Processando arquivo {id_file + 1} de {num_files}: {file.name}"
+        ):
             # Classify the document
             classification = classify_document(file.getvalue())
             source = classification["Fonte_documento"]
 
-            # Extract text based on the classification
-            extracted_text = extract_text(file.getvalue(), source)
+            if source == "BNB":
+                # Split the document into multiple sub-documents
+                sub_documents = split_pdf_in_memory(file.getvalue())
 
-            processed_results[file.name] = {
-                "Fonte": source,
-                "Conteúdo": extracted_text,
-            }
+                for id_subdoc, sub_doc in enumerate(sub_documents):
+                    # Extract text based on the classification
+                    extracted_text = extract_text(sub_doc.read(), source)
+
+                    processed_results[file.name].append(
+                        {
+                            "Fonte": source,
+                            "Conteúdo": extracted_text,
+                            "Parte": f"{id_subdoc + 1} de {len(sub_documents)}",
+                        }
+                    )
+            else:
+                # Extract text based on the classification
+                extracted_text = extract_text(file.getvalue(), source)
+
+                processed_results[file.name].append(
+                    {
+                        "Fonte": source,
+                        "Conteúdo": extracted_text,
+                    }
+                )
+
             my_bar.progress(
-                (i + 1) / num_files,
+                (id_file + 1) / num_files,
                 text="Processando arquivos...",
             )
 
@@ -68,7 +89,8 @@ else:
     st.markdown("[Voltar para a página inicial](./)")
 
 if results is not None:
-    # group the results by source
+    st.write(results)
+    """# group the results by source
     grouped_results = defaultdict(list)
 
     for file_name, result in results.items():
@@ -99,4 +121,4 @@ if results is not None:
             data=output,
             file_name="extracted_data.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        )"""

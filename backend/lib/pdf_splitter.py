@@ -1,96 +1,118 @@
-from io import BytesIO
-import json
-from pathlib import Path
-from typing import List
+# backend/lib/funcs.py (or directly in your streamlit script)
+import pypdf
+import re
+import io
+from typing import List, Optional, Tuple
 
-import google.auth
-from loguru import logger
-from pypdf import PdfReader
-from pypdf import PdfWriter
-import vertexai
-from vertexai.preview.generative_models import GenerationConfig
-from vertexai.preview.generative_models import GenerativeModel
-from vertexai.preview.generative_models import Part
+def find_page_numbering(text: str) -> Optional[Tuple[int, int]]:
+    """
+    Searches for 'Pág X de Y' or similar patterns in the text.
+    Returns (page_number, total_pages) if found, otherwise None.
+    Handles variations like Pág/Pag./Pagina, accents, and spacing.
+    """
+    # Regex:
+    # (?:P[aá]g|Pagina) - Matches "Pag", "Pág", or "Pagina" (non-capturing group)
+    # \.?              - Matches an optional dot
+    # \s*               - Matches zero or more whitespace characters
+    # (\d+)             - Captures the current page number (Group 1)
+    # \s*de\s*          - Matches " de " with flexible spacing
+    # (\d+)             - Captures the total pages (Group 2)
+    # re.IGNORECASE     - Makes the search case-insensitive
+    pattern = re.compile(r"(?:P[aá]g|Pagina)\.?\s*(\d+)\s*de\s*(\d+)", re.IGNORECASE)
+    match = pattern.search(text)
+    if match:
+        try:
+            page_num = int(match.group(1))
+            total_pages = int(match.group(2))
+            return page_num, total_pages
+        except (ValueError, IndexError):
+            return None
+    return None
 
-from lib import utils
-from lib.custom_types import DocumentIO
+def split_pdf_in_memory(pdf_bytes: bytes) -> List[io.BytesIO]:
+    """
+    Splits a PDF (provided as bytes) based on finding 'Page 1 of Y' patterns.
 
-# Initialize Vertex AI
-_, PROJECT_ID = google.auth.default()
-LOCATION = "us-central1"
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+    Args:
+        pdf_bytes (bytes): The content of the concatenated input PDF file.
 
-MODEL_NAME = "gemini-1.5-pro"
-model = GenerativeModel(MODEL_NAME)
+    Returns:
+        List[io.BytesIO]: A list of BytesIO streams, each containing a sub-document.
+                          Returns a list with a single BytesIO stream containing the
+                          original PDF if no splitting boundaries are found or on error.
+    """
+    sub_documents = []
+    original_stream = io.BytesIO(pdf_bytes)
 
-with open("./data/gemini_instructions_split.txt", "r") as f:
-    SPLIT_PROMPT_INSTRUCTIONS = f.read()
+    try:
+        reader = pypdf.PdfReader(original_stream)
+        num_pages_total = len(reader.pages)
+        # print(f"Total pages found: {num_pages_total}") # Optional: for debugging
 
+        boundaries = [0] # Start index of the first sub-document
 
-def get_pdf_split_points(document_io: DocumentIO) -> List[int]:
-    blob, mimetype = document_io
-    document = Part.from_data(
-        mime_type=mimetype,
-        data=blob,
-    )
-    contents = [document, SPLIT_PROMPT_INSTRUCTIONS]
-    with utils.timeit(f"Gemini [{MODEL_NAME}] - OCR - Extract breakpoints"):
-        generation_config = GenerationConfig(
-            response_mime_type="application/json",
-            temperature=0,
-        )
-        response = model.generate_content(
-            contents, generation_config=generation_config, stream=False
-        )
-        raw_response = response.text  # type: ignore
-    logger.debug("[BREAKPOINTS] Raw response: {}", raw_response)
-    results = json.loads(raw_response.strip().strip('"'))
-    start_pages = [int(page) - 1 for page in results]
-    logger.debug("[BREAKPOINTS] Gemini returned {start_pages}", start_pages=start_pages)
-    return start_pages
+        for i in range(num_pages_total):
+            try:
+                page = reader.pages[i]
+                text = page.extract_text()
+                if not text:
+                    # print(f"Warning: Could not extract text from page {i + 1}.") # Optional
+                    continue
 
+                numbering = find_page_numbering(text)
 
-def split_pdf(document_io: DocumentIO) -> List[DocumentIO]:
-    start_pages = get_pdf_split_points(document_io)
-    blob, _ = document_io
-    # read into pdfreader
-    bytes_io = BytesIO(blob)
-    bytes_io.seek(0)
-    pdfreader = PdfReader(bytes_io)
-    # assert gemini result makes sense
-    total_pages = len(pdfreader.pages)
-    assert all(0 <= i < total_pages for i in start_pages)
-    # build page ranges
-    page_ranges = list(zip(start_pages, start_pages[1:] + [total_pages]))
-    # write splitted pdfs as document io list
-    splitted_document_io_list = []
-    for page_range in page_ranges:
-        assert len(page_range) == 2
-        start, end = page_range
-        pdfwriter = PdfWriter()
-        # TODO improve this
-        for idx in range(start, end):
-            pdfwriter.add_page(pdfreader.pages[idx])
-        # write to bytesio
-        pdf_stream = BytesIO()
-        pdfwriter.write(pdf_stream)
-        pdf_stream.seek(0)
-        splitted_document_io_list.append((pdf_stream.read(), "application/pdf"))
-    return splitted_document_io_list
+                if numbering:
+                    page_num, total_pages = numbering
+                    if page_num == 1 and i > 0:
+                        # print(f"  Found boundary marker 'Page 1 of {total_pages}' on page {i + 1}.") # Optional
+                        boundaries.append(i)
 
+            except Exception as e:
+                print(f"Warning: Error processing page {i + 1} for splitting: {e}")
+                continue # Continue to next page
 
-if __name__ == "__main__":
-    filepath = Path("../scripts/test-invoices/unified.pdf")
-    with open(filepath, "rb") as pdf_file:
-        blob = pdf_file.read()
+        boundaries.append(num_pages_total)
+        # print(f"Identified boundaries (start page indices): {boundaries}") # Optional
 
-    mimetype = "application/pdf"
-    document_io = (blob, mimetype)
+        # --- Splitting and Creating In-Memory Streams ---
+        num_subdocs = len(boundaries) - 1
 
-    splitted_document_io_list = split_pdf(document_io=document_io)
+        # If only one document is found (or no boundaries after page 1)
+        if num_subdocs <= 1:
+            print("Info: No effective split boundaries found. Returning original PDF content.")
+            original_stream.seek(0) # Ensure stream is at the beginning
+            return [original_stream]
 
-    # document = Part.from_data(mime_type="application/pdf", data=pdf_content_binary)
+        print(f"Splitting into {num_subdocs} sub-document(s)...") # Optional
 
-    # with open(filepath, "rb") as f:
-    #     blob = BytesIO(f.read())
-    #     blob.seek(0)
+        for i in range(num_subdocs):
+            start_page = boundaries[i]
+            end_page = boundaries[i + 1]
+
+            if start_page >= end_page:
+                # print(f"Warning: Skipping empty sub-document range starting at page {start_page + 1}.") # Optional
+                continue
+
+            writer = pypdf.PdfWriter()
+            # print(f"  Creating sub-document {i + 1} (Pages {start_page + 1} to {end_page})...") # Optional
+            for page_index in range(start_page, end_page):
+                writer.add_page(reader.pages[page_index])
+
+            # Write to an in-memory stream
+            output_stream = io.BytesIO()
+            writer.write(output_stream)
+            output_stream.seek(0) # Rewind stream to the beginning for reading
+            sub_documents.append(output_stream)
+            writer.close() # Good practice to close writer
+
+        print("Splitting complete.") # Optional
+        return sub_documents
+
+    except pypdf.errors.PdfReadError as e:
+        print(f"Error: Failed to read PDF for splitting. It might be corrupted. Details: {e}")
+        original_stream.seek(0)
+        return [original_stream] # Return original on read error
+    except Exception as e:
+        print(f"An unexpected error occurred during splitting: {e}")
+        original_stream.seek(0)
+        return [original_stream] # Return original on other errors
